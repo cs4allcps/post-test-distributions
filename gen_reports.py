@@ -1,5 +1,6 @@
 import pandas as pd 
 import csv
+import requests
 
 
 def load_data(posttest_dist = True, course_codes = True):
@@ -52,4 +53,28 @@ def sections_report():
                 sections['SubjectNumber'].iloc[row], sections['SubjectName'].iloc[row],
                 sections['StudentEnr'].iloc[row]]
             w.writerow(info)
+
+def schools_report():
+    '''
+    Generates a csv with a row for each CPS high school with school name, school code, 
+    number of ECS sections and total ECS enrollment
+    '''
+    pretests, spring_enrollment, codes = load_data()
+    #filter out CTE and other non-ECS courses
+    included_courses = codes['Course code'].tolist()
+    sections = spring_enrollment[spring_enrollment['SubjectNumber'].isin(included_courses)]
+    url = 'https://data.cityofchicago.org/resource/76dk-7ieb.json?is_high_school=Y'
+    resp = requests.get(url)
+    schools = pd.read_json(resp.text) #pandas dataframe with high school profile information
+    high_schools = schools['school_id'].tolist()
+    with open('ecs_schools_report.csv', 'w') as f:
+        w = csv.writer(f)
+        w.writerow(['school_name', 'school_id', 'ecs_sections', 'ecs_enrollment'])
+        for school_id in high_schools:
+            school = sections[sections['SchoolID'] == school_id]
+            name = schools[schools['school_id'] == school_id]['short_name'].iloc[0]
+            num_sections = len(school)
+            enrollment = sum(school['StudentEnr'].tolist())
+            w.writerow([name, school_id, num_sections, enrollment])
+
 
