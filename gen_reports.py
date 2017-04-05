@@ -17,10 +17,10 @@ def load_data(posttest_dist = True, course_codes = True):
     #load sequences
     if posttest_dist == True:
         pretests = pd.read_excel('SY16-17 SRI posttest distribution.xlsx', 
-            sheetname = 'pretests', index_col = None)
+            sheetname = 'pretests', index_col = None, convert_float = True)
         pretests = pretests[pretests['Assignment'] != 'SRI']
         spring_enrollment = pd.read_excel('SY16-17 SRI posttest distribution.xlsx', 
-            sheetname = 'spring enrollment', index_col = None)
+            sheetname = 'spring enrollment', index_col = None, convert_float = True)
     if course_codes == True:
         codes = pd.read_excel('Computer & CS4All course code master list.xlsx', 
             sheetname = 'codes', index_col = None)
@@ -76,5 +76,51 @@ def schools_report():
             num_sections = len(school)
             enrollment = sum(school['StudentEnr'].tolist())
             w.writerow([name, school_id, num_sections, enrollment])
+
+def teacher_change():
+    '''
+    Generates list of teachers that taught in the fall but not the spring 
+    and another with those that teach in the spring but didn't in the fall
+    '''
+    pretests, spring_enrollment, codes = load_data()
+    #filter out CTE and other non-ECS courses
+    included_courses = codes['Course code'].tolist()
+    sections = spring_enrollment[spring_enrollment['SubjectNumber'].isin(included_courses)]
+    fall_teachers = list(set(pretests['StaffCompleteName'].tolist()))
+    spring_teachers = list(set(spring_enrollment['StaffCompleteName'].tolist()))
+    #make list of teachers that taught in the fall and not in the spring
+    pretests = pretests[~pretests['StaffCompleteName'].isin(spring_teachers)]
+    l = []
+    for row in range(len(pretests)):
+        t = (pretests['StaffCompleteName'].iloc[row], pretests['StaffEmail'].iloc[row])
+        l.append(t)
+    s = set(l)
+    with open('former_teachers.csv', 'w') as f:
+        w = csv.writer(f)
+        w.writerow(['name', 'email'])
+        for row in s:
+            w.writerow([row[0], row[1]])
+    #make list of teachers that teach in the spring but didn't in the fall
+    sections = sections[~sections['StaffCompleteName'].isin(fall_teachers)]
+    l = []
+    for row in range(len(sections)):
+        t = (sections['StaffCompleteName'].iloc[row], sections['StaffEmail'].iloc[row])
+        l.append(t)
+    s = set(l)
+    with open('new_teachers.csv', 'w') as f:
+        w = csv.writer(f)
+        w.writerow(['name', 'email'])
+        for row in s:
+            w.writerow([row[0], row[1]])
+
+    
+
+
+
+
+
+
+
+
 
 
